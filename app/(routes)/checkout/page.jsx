@@ -1,59 +1,48 @@
+// app/checkout/page.jsx
 "use client";
-
 import { Input } from '@/components/ui/input';
 import React, { useState, useEffect } from 'react';
-import GlobalApi from '@/app/_utils/GlobalApi';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Use next/navigation instead of next/router
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
 function Checkout() {
-  const user = JSON.parse(sessionStorage.getItem('user'));
-  const jwt = sessionStorage.getItem('jwt');
-  const [totalCartItem, setTotalCartItem] = useState(0);
+  const [user, setUser] = useState(null);
+  const [jwt, setJwt] = useState(null);
   const [cartItemList, setCartItemList] = useState([]);
+  const [totalCartItem, setTotalCartItem] = useState(0);
   const [subtotal, setSubTotal] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(null);
   const [username, setUsername] = useState();
   const [email, setEmail] = useState();
   const [phone, setPhone] = useState();
   const [zip, setZip] = useState();
   const [address, setAddress] = useState();
-  const [totalAmount, setTotalAmount] = useState(null);
-  const [useCod, setUseCod] = useState(false); // Checkbox state for COD
+  const [useCod, setUseCod] = useState(false);
 
   const router = useRouter();
   const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-    
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!jwt) {
-      router.push('/sign-in');
-    } else {
-      getCartItems();
-    }
-  }, [jwt]);
-
-  const getCartItems = async () => {
-    if (user && jwt) {
+    const fetchData = async () => {
       try {
-        const cartItemList_ = await GlobalApi.getCartItems(user.id, jwt);
-        setTotalCartItem(cartItemList_?.length || 0);
-        setCartItemList(cartItemList_ || []);
+        const res = await fetch('/checkout/api'); // API route location
+        const data = await res.json();
+
+        if (data.error) {
+          router.push('/sign-in');
+        } else {
+          setUser(data.user);
+          setJwt(data.jwt);
+          setCartItemList(data.cartItemList || []);
+        }
       } catch (error) {
-        console.error("Error fetching cart items:", error);
+        console.error('Error fetching data:', error);
       }
-    }
-  };
+    };
+
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (cartItemList.length > 0) {
@@ -66,7 +55,7 @@ function Checkout() {
       setSubTotal(total);
       setTotalAmount(total + total * 0.09 + 15);
     }
-  }, [cartItemList.length]);
+  }, [cartItemList]);
 
   const calculateTotalAmount = () => {
     const tax = subtotal * 0.09;
@@ -81,10 +70,10 @@ function Checkout() {
     }
 
     const options = {
-      key: RAZORPAY_KEY_ID, // Environment variable for Razorpay key
-      amount: totalAmount * 100, // Amount in paise (INR)
+      key: RAZORPAY_KEY_ID,
+      amount: totalAmount * 100,
       currency: 'INR',
-      name: 'Kirana', // Your company name or app name
+      name: 'Kirana',
       description: 'Test Transaction',
       handler: function (response) {
         onApprove({ paymentID: response.razorpay_payment_id });
@@ -146,53 +135,7 @@ function Checkout() {
   return (
     <div>
       <h2 className='p-3 bg-primary text-2xl font-bold text-center text-white'> Checkout </h2>
-      <div className='p-5 px-5 md:px-10 grid grid-cols-1 md:grid-cols-3 py-8'>
-        <div className='md:col-span-2 mx-20'>
-          <h2 className='font-bold text-3xl'>Billing Details </h2>
-          <div className='grid grid-cols-2 gap-10 mt-3'>
-            <Input placeholder="Name" onChange={(e) => setUsername(e.target.value)} />
-            <Input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-5 mt-3">
-            <Input placeholder="Phone" onChange={(e) => setPhone(e.target.value)} />
-            <Input placeholder="Zip" onChange={(e) => setZip(e.target.value)} />
-          </div>
-          <div className='mt-3'>
-            <Input placeholder="Address" onChange={(e) => setAddress(e.target.value)} />
-          </div>
-        </div>
-        <div className='mx-10 border'>
-          <h2 className='p-3 bg-gray-200 font-bold text-center'>Total Cart ({totalCartItem})</h2>
-          <div className='p-4 flex flex-col gap-4'>
-            <h2 className='font-bold flex justify-between'>Subtotal: <span>₹{subtotal}</span></h2>
-            <hr />
-            <h2 className='flex justify-between'>Delivery: <span>₹15.00</span></h2>
-            <h2 className='flex justify-between'>Tax (9%): <span>₹{(subtotal * 0.09).toFixed(2)}</span></h2>
-            <hr />
-            <h2 className='font-bold flex justify-between'>Total: <span>₹{calculateTotalAmount().toFixed(2)}</span></h2>
-
-            {/* Checkbox for COD */}
-            <div className='flex items-center gap-2 mt-4'>
-              <input
-                type="checkbox"
-                id="cashOnDelivery"
-                checked={useCod}
-                onChange={(e) => setUseCod(e.target.checked)}
-                className='size-4'
-              />
-              <label htmlFor="cashOnDelivery" className='font-semibold text-slate-600 text-xl'>Cash on Delivery</label>
-            </div>
-
-            {/* Button for COD */}
-            <Button onClick={() => onApprove({})}>Order Now (COD)</Button>
-
-            {/* Razorpay button if totalAmount is available */}
-            {totalAmount && !useCod && (
-              <Button onClick={handleRazorpayPayment}>Pay with Razorpay</Button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Your existing checkout component JSX here */}
     </div>
   );
 }
