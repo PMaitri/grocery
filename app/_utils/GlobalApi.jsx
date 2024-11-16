@@ -1,4 +1,3 @@
-
 const { default: axios } = require("axios");
 
 const axiosClient = axios.create({
@@ -24,8 +23,20 @@ const getAllProducts = () => axiosClient.get('/products?populate=*').then(resp =
 });
 
 // Fetch products by category
-const getProductsByCategory = (category) => axiosClient.get('/products?filters[categories][name][$in]=' + category + '&populate=*')
-  .then(resp => { return resp.data.data });
+const getProductsByCategory = (category) => 
+  axiosClient.get(`/products?filters[categories][name][$in]=${category}&populate=*`)
+    .then(resp => {
+      if (resp.data && resp.data.data) {
+        return resp.data.data;
+      } else {
+        console.error("No products found for category:", category);
+        return [];
+      }
+    })
+    .catch(error => {
+      console.error("Error fetching products by category:", error);
+      return []; // Return an empty array on error
+    });
 
 // User registration
 const registerUser = (username, email, password) => axiosClient.post('/auth/local/register', {
@@ -48,14 +59,14 @@ const addToCart = (data, jwt) => axiosClient.post('/user-carts', data, {
 });
 
 // Get cart items for a user
-const getCartItems = (userId, jwt) => axiosClient.get('/user-carts?filters[userId][$eq]=' + userId + '&[populate][products][populate][images][populate][0]=url',
-  {
+const getCartItems = (userId, jwt) => 
+  axiosClient.get(`/user-carts?filters[userId][$eq]=${userId}&[populate][products][populate][images][populate][0]=url`, {
     headers: {
       Authorization: `Bearer ${jwt}`
     }
   }).then(resp => {
     const data = resp.data.data;
-    const cartItemsList = data.map((item, index) => ({
+    return data.map((item) => ({
       name: item.attributes.products?.data[0].attributes.name,
       quantity: item.attributes.quantity,
       amount: item.attributes.amount,
@@ -65,11 +76,10 @@ const getCartItems = (userId, jwt) => axiosClient.get('/user-carts?filters[userI
       product: item.attributes.products?.data[0].id,
       status: item.attributes.status
     }));
-    return resp.data.data;
   });
 
 // Delete item from cart
-const deleteCartItem = (id, jwt) => axiosClient.delete('/user-carts/' + id, {
+const deleteCartItem = (id, jwt) => axiosClient.delete(`/user-carts/${id}`, {
   headers: {
     Authorization: `Bearer ${jwt}`
   }
@@ -83,10 +93,10 @@ const createOrder = (data, jwt) => axiosClient.post('/orders', data, {
 });
 
 // Get orders for a user
-const getMyOrder = (userId, jwt) => axiosClient.get('orders?filters[userId][$eq]=' + userId + '&populate[orderItemList][populate][product][populate][images]=url')
+const getMyOrder = (userId, jwt) => axiosClient.get(`/orders?filters[userId][$eq]=${userId}&populate[orderItemList][populate][product][populate][images]=url`)
   .then(resp => {
     const response = resp.data.data;
-    const orderList = response.map(item => ({
+    return response.map(item => ({
       id: item.id,
       totalOrderAmount: item.attributes.totalOrderAmount,
       paymentId: item.attributes.paymentId,
@@ -94,7 +104,6 @@ const getMyOrder = (userId, jwt) => axiosClient.get('orders?filters[userId][$eq]
       createdAt: item.attributes.createdAt,
       trackingStatus: item.attributes.Tracking_Status // Access the tracking status here
     }));
-    return orderList;
   });
 
 // Update the tracking status of an order
@@ -128,5 +137,5 @@ export default {
   deleteCartItem,
   createOrder,
   getMyOrder,
-  updateOrderStatus 
+  updateOrderStatus
 };

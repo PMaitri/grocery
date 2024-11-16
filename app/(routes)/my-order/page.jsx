@@ -15,6 +15,7 @@ function MyOrder() {
     const user = JSON.parse(sessionStorage.getItem('user'));
     const router = useRouter();
     const [orderList, setOrderList] = useState([]);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (!jwt) {
@@ -27,20 +28,23 @@ function MyOrder() {
     const fetchMyOrders = async () => {
         try {
             const orders = await GlobalApi.getMyOrder(user.id, jwt);
-            console.log(orders);  // For debugging purposes
             setOrderList(orders);
         } catch (error) {
             console.error("Error fetching orders:", error);
+            setError('Failed to load your orders. Please try again later.');
         }
     };
 
-    // Add the getTrackingStageClass function here
     const getTrackingStageClass = (index, trackingStatus) => {
         const stages = ['order_placed', 'preparing', 'on_the_way', 'delivered'];
-        // Determine the current status index
         const currentStatusIndex = stages.indexOf(trackingStatus);
-        // Return green for completed stages
-        return index <= currentStatusIndex ? 'text-green-500' : 'text-gray-400';
+        if (index < currentStatusIndex) {
+            return 'text-green-500';  // Completed stages
+        } else if (index === currentStatusIndex) {
+            return 'text-blue-500';   // Current stage
+        } else {
+            return 'text-gray-400';   // Upcoming stages
+        }
     };
 
     const trackingStages = ['Order Placed', 'Preparing', 'On the Way', 'Delivered'];
@@ -50,14 +54,18 @@ function MyOrder() {
             <h2 className='p-3 bg-primary text-2xl font-bold text-center text-white'>My Order</h2>
             <div className='py-8 mx-7 md:mx-20'>
                 <h2 className='text-3xl font-bold text-primary'>Order History</h2>
+
+                {/* Display error if there's an issue fetching orders */}
+                {error && <div className="text-red-500">{error}</div>}
+
                 <div>
                     {orderList.map((order) => (
                         <Collapsible key={order.id}>
                             <CollapsibleTrigger>
                                 <div className='p-2 border bg-slate-100 flex justify-evenly gap-24'>
                                     <h2><span className='font-semibold mr-2'>Order Date:</span> {moment(order.createdAt).format('DD/MMM/YYYY')}</h2>
-                                    <h2><span className='font-semibold mr-2'> Total Amount: </span>{order.totalOrderAmount} </h2>
-                                    <h2><span className='font-semibold mr-2'> Status: </span>CASH ON DELIVERY  {order.paymentStatus}</h2>
+                                    <h2><span className='font-semibold mr-2'>Total Amount: </span>{order.totalOrderAmount} </h2>
+                                    <h2><span className='font-semibold mr-2'>Status: </span>CASH ON DELIVERY  {order.paymentStatus}</h2>
                                 </div>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
@@ -75,7 +83,7 @@ function MyOrder() {
                                                 <div key={stage} className='text-center'>
                                                     <div className={`${getTrackingStageClass(index, order.trackingStatus)}`}>
                                                         <span className={`text-2xl`}>
-                                                            {index <= trackingStages.indexOf(order.trackingStatus) ? '⦿' :'⦿'}
+                                                            {index <= trackingStages.indexOf(order.trackingStatus) ? '⦿' : '⦿'}
                                                         </span>
                                                     </div>
                                                     <p>{stage}</p>
